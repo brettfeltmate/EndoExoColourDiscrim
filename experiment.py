@@ -113,6 +113,9 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		self.fixation_duration = self.get_fixation_interval()
 		self.trial_audio = self.get_trial_audio()
 
+		self.base_volume = 0.1
+		self.cue_volume = 0.2 if self.signal_intensity == 'hi' else self.base_volume
+
 		self.stims['mask'] = self.generate_mask()
 
 		if self.soa == 400:
@@ -145,15 +148,15 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		blit(self.stims[self.trial_cue], location=P.screen_c, registration=5)
 		flip()
 
-		# while self.signals[PRE].playing:
-		# 	ui_request()
-		#
-		# self.signals[CUE].play()
-		#
-		# while self.signals[CUE].playing:
-		# 	ui_request()
-		#
-		# self.signals[POST].play()
+		while self.evm.before('play_cue'):
+			ui_request()
+
+		self.trial_audio.volume(self.cue_volume)
+
+		while self.evm.before('stop_cue'):
+			ui_request()
+
+		self.trial_audio.volume(self.base_volume)
 
 		while self.evm.before('target_on'):
 			ui_request()
@@ -225,7 +228,7 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		fix = np.c_[fix_L, fix_R]
 
 		cue_L = self.generate_noise(P.cue_duration)
-		cue_R = self.generate_noise(P.cue_duration) if self.signal_intensity == 'hi' else cue_L
+		cue_R = self.generate_noise(P.cue_duration)
 
 		cue = np.c_[cue_L, cue_R]
 
@@ -237,7 +240,7 @@ class EndoExoColourDiscrim(klibs.Experiment):
 
 		clip = np.r_[fix, cue, post]
 
-		return AudioClip(clip=clip)
+		return AudioClip(clip=clip, volume=0.1)
 
 
 	def generate_noise(self, duration):

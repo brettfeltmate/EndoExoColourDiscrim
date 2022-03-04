@@ -71,7 +71,7 @@ fixation_mean = 4000
 fixation_max = 6000
 
 target_duration = 50
-signal_duration = 100
+cue_duration = 100
 detection_timeout = 1000
 discrimination_timeout = 5000
 ITI = 1000

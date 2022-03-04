@@ -190,8 +190,12 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		self.rc_key.keypress_listener.reset()
 		self.rc_wheel.color_listener.reset()
 
-		while self.signals['post_cue'].playing:
+		ITI_start = now()
+
+		while now() < ITI_start + P.ITI:
 			ui_request()
+
+		self.signals[POST].stop()
 
 
 
@@ -240,9 +244,9 @@ class EndoExoColourDiscrim(klibs.Experiment):
 	def get_fixation_interval(self):
 		max_f, min_f, mean_f = P.fixation_max, P.fixation_min, P.fixation_mean
 
-		interval = random.expovariate(1 / (mean_f - min_f)) + min_f
+		interval = random.expovariate(1.0 / float(mean_f - min_f)) + min_f
 		while interval > max_f:
-			interval = random.expovariate(1 / (mean_f - min_f)) + min_f
+			interval = random.expovariate(1.0 / float(mean_f - min_f)) + min_f
 
 
 		return interval

@@ -151,12 +151,12 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		while self.evm.before('play_cue'):
 			ui_request()
 
-		self.trial_audio.volume(self.cue_volume)
+		self.trial_audio.volume = self.cue_volume
 
 		while self.evm.before('stop_cue'):
 			ui_request()
 
-		self.trial_audio.volume(self.base_volume)
+		self.trial_audio.volume = self.base_volume
 
 		while self.evm.before('target_on'):
 			ui_request()

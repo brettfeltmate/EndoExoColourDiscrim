@@ -9,7 +9,7 @@
 __author__ = "Brett Feltmate"
 
 import klibs
-import numpy.random
+import numpy as np
 from klibs import P
 from klibs.KLConstants import TK_MS, RC_KEYPRESS, RC_COLORSELECT
 from klibs.KLGraphics.colorspaces import const_lum
@@ -19,7 +19,7 @@ from klibs.KLCommunication import message
 from klibs.KLGraphics import fill, blit, flip, clear
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLResponseCollectors import ResponseCollector, KeyMap
-from klibs.KLAudio import Noise
+from klibs.KLAudio import AudioClip
 from sdl2 import SDLK_SPACE
 import aggdraw # For drawing mask cells in a single texture
 from PIL import Image
@@ -111,25 +111,24 @@ class EndoExoColourDiscrim(klibs.Experiment):
 
 	def trial_prep(self):
 		self.fixation_duration = self.get_fixation_interval()
-		self.signals = self.generate_signals()
-
-
+		self.trial_audio = self.get_trial_audio()
 
 		self.stims['mask'] = self.generate_mask()
+
 		if self.soa == 400:
 			self.trial_cue = 'cue_short' if self.cue_valid else 'cue_long'
 		else:
 			self.trial_cue = 'cue_long' if self.cue_valid else 'cue_long'
 
-		self.target_angle = numpy.random.randint(0, 360)
+		self.target_angle = np.random.randint(0, 360)
 		self.target_rgb = self.stims['wheel'].color_from_angle(self.target_angle)
 		self.stims['target'].fill = self.target_rgb
 
-		self.stims['wheel'].rotation = numpy.random.randint(0, 360)
+		self.stims['wheel'].rotation = np.random.randint(0, 360)
 
 		events = []
 		events.append([self.fixation_duration, 'play_cue'])
-		events.append([events[-1][0] + P.signal_duration, 'stop_cue'])
+		events.append([events[-1][0] + P.cue_duration, 'stop_cue'])
 		events.append([events[-1][0] + self.soa, 'target_on'])
 		events.append([events[-1][0] + P.target_duration, 'mask_on'])
 
@@ -140,21 +139,21 @@ class EndoExoColourDiscrim(klibs.Experiment):
 
 
 	def trial(self):
-		self.signals[PRE].play()
+		self.trial_audio.play()
 
 		fill()
 		blit(self.stims[self.trial_cue], location=P.screen_c, registration=5)
 		flip()
 
-		while self.signals[PRE].playing:
-			ui_request()
-
-		self.signals[CUE].play()
-
-		while self.signals[CUE].playing:
-			ui_request()
-
-		self.signals[POST].play()
+		# while self.signals[PRE].playing:
+		# 	ui_request()
+		#
+		# self.signals[CUE].play()
+		#
+		# while self.signals[CUE].playing:
+		# 	ui_request()
+		#
+		# self.signals[POST].play()
 
 		while self.evm.before('target_on'):
 			ui_request()
@@ -197,7 +196,7 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		while now() < ITI_start + (P.ITI / 1000):
 			ui_request()
 
-		self.signals[POST].stop()
+		self.trial_audio.stop()
 
 
 
@@ -219,28 +218,37 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		flip()
 
 
-	def generate_signals(self):
-		pre_cue = Noise(
-			duration=self.fixation_duration * 2,
-			dichotic=False,
-			volume=0.1
-		)
-		cue_volume = 0.2 if self.signal_intensity == 'hi' else 0.1
-		cue = Noise(
-			duration=P.signal_duration*2,
-			dichotic=True,
-			volume=cue_volume
-		)
+	def get_trial_audio(self):
+		fix_L = self.generate_noise(self.fixation_duration)
+		fix_R = fix_L
 
-		post_cue_duration = self.soa + P.target_duration + P.detection_timeout + P.discrimination_timeout + P.ITI
+		fix = np.c_[fix_L, fix_R]
 
-		post_cue = Noise(
-			duration=post_cue_duration*2,
-			dichotic=False,
-			volume=0.1
-		)
+		cue_L = self.generate_noise(P.cue_duration)
+		cue_R = self.generate_noise(P.cue_duration) if self.signal_intensity == 'hi' else cue_L
 
-		return {PRE: pre_cue, CUE: cue, POST: post_cue}
+		cue = np.c_[cue_L, cue_R]
+
+		post_duration = self.soa + P.target_duration + P.detection_timeout + P.discrimination_timeout + P.ITI + 1000
+		post_L = self.generate_noise(post_duration)
+		post_R = post_L
+
+		post = np.c_[post_L, post_R]
+
+		clip = np.r_[fix, cue, post]
+
+		return AudioClip(clip=clip)
+
+
+	def generate_noise(self, duration):
+		max_int = 2**16/2 - 1 # 32767, which is the max/min value for a signed 16-bit int
+		dtype = np.int16 # Default audio format for SDL_Mixer is signed 16-bit integer
+		sample_rate = 44100/2 # sample rate for each channel is 22050 kHz, so 44100 total.
+		size = int((duration/1000.0)*sample_rate) * 2
+
+		arr = np.random.uniform(low=-1.0, high=1.0, size=size) * max_int
+
+		return arr.astype(dtype)
 
 
 	def get_fixation_interval(self):
@@ -289,7 +297,7 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		# Apply cells to mask
 		surface.flush()
 
-		return numpy.asarray(canvas)
+		return np.asarray(canvas)
 
 
 

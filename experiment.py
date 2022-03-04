@@ -13,7 +13,7 @@ import numpy.random
 from klibs import P
 from klibs.KLConstants import TK_MS, RC_KEYPRESS, RC_COLORSELECT
 from klibs.KLGraphics.colorspaces import const_lum
-from klibs.KLUtilities import deg_to_px, now, mouse_pos
+from klibs.KLUtilities import deg_to_px, now, mouse_pos, hide_mouse_cursor
 from klibs.KLUserInterface import ui_request, any_key
 from klibs.KLCommunication import message
 from klibs.KLGraphics import fill, blit, flip, clear
@@ -136,6 +136,8 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		for e in events:
 			self.evm.register_ticket([e[1], e[0]])
 
+		hide_mouse_cursor()
+
 
 	def trial(self):
 		self.signals[PRE].play()
@@ -192,7 +194,7 @@ class EndoExoColourDiscrim(klibs.Experiment):
 
 		ITI_start = now()
 
-		while now() < ITI_start + P.ITI:
+		while now() < ITI_start + (P.ITI / 1000):
 			ui_request()
 
 		self.signals[POST].stop()

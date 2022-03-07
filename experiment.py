@@ -267,10 +267,11 @@ class EndoExoColourDiscrim(klibs.Experiment):
 
 
 	def generate_mask(self):
+		cells = 16
 		# Set mask size
 		canvas_size = self.sizes['target']
 		# Set cell size
-		cell_size = canvas_size / 2 # Mask comprised of 4 smaller cells arranged 2x2
+		cell_size = canvas_size / cells # Mask comprised of 4 smaller cells arranged 2x2
 		# Each cell has a black outline
 		cell_outline_width = deg_to_px(.05)
 
@@ -283,8 +284,8 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		transparent_pen = aggdraw.Pen((0, 0, 0), cell_outline_width)
 
 		# Generate cells, arranged in 4x4 array
-		for row in [0, 1]:
-			for col in [0, 1]:
+		for row in [0, cells/2]:
+			for col in [0, cells/2]:
 				# Randomly select colour for each cell
 				cell_colour = const_lum[random.randrange(0, 360)]
 				# Brush to apply colour

@@ -24,6 +24,7 @@ from sdl2 import SDL_MOUSEBUTTONDOWN
 import aggdraw # For drawing mask cells in a single texture
 from PIL import Image
 import random
+import math
 
 WHITE = (255, 255, 255, 255)
 PRE = "pre_cue"
@@ -307,7 +308,7 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		# Set mask size
 		canvas_size = self.sizes[TARGET]
 		# Set cell size
-		cell_size = canvas_size / cells # Mask comprised of 4 smaller cells arranged 2x2
+		cell_size = int(canvas_size / math.sqrt(cells)) # Mask comprised of 4 smaller cells arranged 2x2
 		# Each cell has a black outline
 		cell_outline_width = deg_to_px(.05)
 

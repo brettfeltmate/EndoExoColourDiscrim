@@ -20,12 +20,12 @@ from klibs.KLGraphics import fill, blit, flip, clear
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLResponseCollectors import ResponseCollector, KeyMap, MouseButtonResponse, Response
 from klibs.KLAudio import AudioClip
-from sdl2 import SDL_MOUSEBUTTONDOWN
+
 import aggdraw # For drawing mask cells in a single texture
 from PIL import Image
 import random
 import math
-from collections import namedtuple
+
 
 WHITE = (255, 255, 255, 255)
 PRE = "pre_cue"
@@ -341,8 +341,8 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		transparent_pen = aggdraw.Pen((0, 0, 0), cell_outline_width)
 
 		# Generate cells, arranged in 4x4 array
-		for row in [0, cells/4]:
-			for col in [0, cells/4]:
+		for row in range(cell_size):
+			for col in range(cell_size):
 				# Randomly select colour for each cell
 				cell_colour = const_lum[random.randrange(0, 360)]
 				# Brush to apply colour

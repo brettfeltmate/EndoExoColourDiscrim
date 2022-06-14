@@ -13,18 +13,19 @@ import numpy as np
 from klibs import P
 from klibs.KLConstants import TK_MS, RC_KEYPRESS, RC_COLORSELECT, NO_RESPONSE
 from klibs.KLGraphics.colorspaces import const_lum
-from klibs.KLUtilities import deg_to_px, now, mouse_pos, hide_mouse_cursor
+from klibs.KLUtilities import deg_to_px, now, mouse_pos, hide_mouse_cursor, show_mouse_cursor
 from klibs.KLUserInterface import ui_request, any_key
 from klibs.KLCommunication import message
 from klibs.KLGraphics import fill, blit, flip, clear
 from klibs.KLGraphics import KLDraw as kld
-from klibs.KLResponseCollectors import ResponseCollector, KeyMap, MouseButtonResponse
+from klibs.KLResponseCollectors import ResponseCollector, KeyMap, MouseButtonResponse, Response
 from klibs.KLAudio import AudioClip
 from sdl2 import SDL_MOUSEBUTTONDOWN
 import aggdraw # For drawing mask cells in a single texture
 from PIL import Image
 import random
 import math
+from collections import namedtuple
 
 WHITE = (255, 255, 255, 255)
 PRE = "pre_cue"
@@ -36,6 +37,11 @@ TARGET = 'target'
 WHEEL = 'wheel'
 CURSOR = 'cursor'
 MASK = 'mask'
+VALID = 'valid'
+INVALID_SHORT = 'invalid_short'
+INVALID_LONG = 'invalid_long'
+FIX = 'fixation'
+CATCH = 'catch'
 
 class EndoExoColourDiscrim(klibs.Experiment):
 
@@ -45,8 +51,16 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		# Used to select appropriate SOA list for trial (based on cue type & validity),
 		# from which a value is randomly selected.
 		self.ctoa_map = {
-			SHORT: {True: [400], False: [1000, 1600]},
-			LONG: {True: [1600], False: [400, 1000]}
+			SHORT: {
+				VALID: 400,
+				INVALID_SHORT: 1000,
+				INVALID_LONG: 1600
+			},
+			LONG: {
+				VALID: 1600,
+				INVALID_SHORT: 400,
+				INVALID_LONG: 1000
+			}
 		}
 
 		self.sizes = {
@@ -63,7 +77,8 @@ class EndoExoColourDiscrim(klibs.Experiment):
 			SHORT: message('----', style=CUE, location=P.screen_c, registration=5, blit_txt=False),
 			TARGET: kld.Rectangle(width=self.sizes[TARGET]),
 			WHEEL: kld.ColorWheel(diameter=self.sizes[WHEEL][0], thickness=self.sizes[WHEEL][1], auto_draw=False),
-			CURSOR: kld.Annulus(diameter=self.sizes[CURSOR][0], thickness=self.sizes[CURSOR][1], fill=WHITE)
+			CURSOR: kld.Annulus(diameter=self.sizes[CURSOR][0], thickness=self.sizes[CURSOR][1], fill=WHITE),
+			FIX: kld.FixationCross(size=self.sizes[TARGET], thickness=deg_to_px(0.1), fill=WHITE)
 		}
 
 
@@ -135,40 +150,39 @@ class EndoExoColourDiscrim(klibs.Experiment):
 
 
 
-		self.soa = random.choice(self.ctoa_map[self.cue_value][self.cue_valid])
+		self.ctoa = self.ctoa_map[self.cue_value][self.cue_valid] if not self.catch_trial else 1600
 		self.fixation_duration = self.get_fixation_interval()
 		self.trial_audio = self.get_trial_audio()
 
 		self.base_volume = 0.1
 		self.cue_volume = 0.2 if self.signal_intensity == 'hi' else self.base_volume
 
-		self.stims[MASK] = self.generate_mask()
+		if not self.catch_trial:
+			self.stims[MASK] = self.generate_mask()
+			self.stims[WHEEL].rotation = np.random.randint(0, 360)
+			self.stims[WHEEL].render()
 
+			self.target_angle = np.random.randint(0, 360)
+			self.target_rgb = self.stims[WHEEL].color_from_angle(self.target_angle)
+			self.stims[TARGET].fill = self.target_rgb
 
-
-		self.stims[WHEEL].rotation = np.random.randint(0, 360)
-		self.stims[WHEEL].render()
-
-		self.target_angle = np.random.randint(0, 360)
-		self.target_rgb = self.stims[WHEEL].color_from_angle(self.target_angle)
-		self.stims[TARGET].fill = self.target_rgb
-
-		self.rc_wheel.color_listener.set_wheel(self.stims[WHEEL])
-		self.rc_wheel.color_listener.set_target(self.stims[TARGET])
+			self.rc_wheel.color_listener.set_wheel(self.stims[WHEEL])
+			self.rc_wheel.color_listener.set_target(self.stims[TARGET])
 
 		events = []
 		events.append([self.fixation_duration, 'play_cue'])
 		events.append([events[-1][0] + P.cue_duration, 'stop_cue'])
-		events.append([events[-1][0] + self.soa, 'target_on'])
+		events.append([events[-1][0] + self.ctoa, 'target_on'])
 		events.append([events[-1][0] + P.target_duration, 'mask_on'])
 
 		for e in events:
 			self.evm.register_ticket([e[1], e[0]])
 
-		hide_mouse_cursor()
+
 
 
 	def trial(self):
+		hide_mouse_cursor()
 		self.trial_audio.play()
 
 		fill()
@@ -188,48 +202,54 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		while self.evm.before('target_on'):
 			ui_request()
 
-		fill()
-		blit(self.stims[TARGET], registration=5, location=P.screen_c)
-		flip()
+		if not self.catch_trial:
+
+			fill()
+			blit(self.stims[TARGET], registration=5, location=P.screen_c)
+			flip()
 
 
 
-		self.rc_mouse.collect()
-		detection = self.rc_mouse.mousebutton_listener.response()
+			self.rc_mouse.collect()
+			detection = self.rc_mouse.mousebutton_listener.response()
 
-		if detection[0] == NO_RESPONSE:
-			if P.practicing:
-				fb_start = now()
-				fill()
-				message("Too slow!", location=P.screen_c, registration=5, blit_txt=True)
-				flip()
+			if detection[0] == NO_RESPONSE:
+				discrimination = Response(NO_RESPONSE, 'NA')
+				if P.practicing:
+					fb_start = now()
+					fill()
+					message("Too slow!", location=P.screen_c, registration=5, blit_txt=True)
+					flip()
 
-				while now() < fb_start + (P.feedback_duration/1000):
-					ui_request()
+					while now() < fb_start + (P.feedback_duration/1000):
+						ui_request()
 
-		else:
-			self.rc_wheel.collect()
-			discrimination = self.rc_wheel.color_listener.response()
+			else:
+				show_mouse_cursor()
+				self.rc_wheel.collect()
+				discrimination = self.rc_wheel.color_listener.response()
 
 		return {
 			"block_num": P.block_number,
 			"trial_num": P.trial_number,
 			"fix_duration": self.fixation_duration,
-			"soa": self.soa,
-			"cue_valid": self.cue_valid,
+			"ctoa": self.ctoa,
+			"cue_valid": CATCH if self.catch_trial else self.cue_valid,
 			"signal_intensity": self.signal_intensity,
-			"target_rgb": self.target_rgb,
-			"response_rgb": discrimination.value[1],
-			"detection_rt": detection.rt,
-			"discrimination_rt": discrimination.rt,
-			"discrimination_error": discrimination.value[0]
+			"target_rgb": CATCH if self.catch_trial else self.target_rgb,
+			"response_rgb": CATCH if self.catch_trial else detection.value[1],
+			"detection_rt": CATCH if self.catch_trial else detection.rt,
+			"discrimination_rt": CATCH if self.catch_trial else discrimination.rt,
+			"discrimination_error": CATCH if self.catch_trial else discrimination.value[0]
 		}
 
 	def trial_clean_up(self):
-		clear()
-
 		self.rc_mouse.mousebutton_listener.reset()
 		self.rc_wheel.color_listener.reset()
+
+		fill()
+		blit(self.stims[FIX], location=P.screen_c, registration=5)
+		flip()
 
 		ITI_start = now()
 
@@ -269,7 +289,7 @@ class EndoExoColourDiscrim(klibs.Experiment):
 
 		cue = np.c_[cue_L, cue_R]
 
-		post_duration = self.soa + P.target_duration + P.detection_timeout + P.discrimination_timeout + P.ITI + 1000
+		post_duration = self.ctoa + P.target_duration + P.detection_timeout + P.discrimination_timeout + P.ITI + 1000
 		post_L = self.generate_noise(post_duration)
 		post_R = post_L
 
@@ -321,8 +341,8 @@ class EndoExoColourDiscrim(klibs.Experiment):
 		transparent_pen = aggdraw.Pen((0, 0, 0), cell_outline_width)
 
 		# Generate cells, arranged in 4x4 array
-		for row in [0, cells/2]:
-			for col in [0, cells/2]:
+		for row in [0, cells/4]:
+			for col in [0, cells/4]:
 				# Randomly select colour for each cell
 				cell_colour = const_lum[random.randrange(0, 360)]
 				# Brush to apply colour

@@ -97,6 +97,36 @@ class EndoExoColourDiscrim(klibs.Experiment):
 
 
 	def block(self):
+		# You'll need to delete "pass" from these
+		# anything you want them to see first
+		if P.practicing:
+			# fill()
+			# message("stuff", location=P.screen_c, registration=5, blit_txt=True)
+			# flip()
+
+			# any_key()
+			pass
+		# anything you want them to see on first exp block
+		elif P.block_number == 1:
+			# fill()
+			# message("stuff", location=P.screen_c, registration=5, blit_txt=True)
+			# flip()
+
+			# any_key()
+			pass
+
+		# anything for remaining blcoks
+		else:
+			# fill()
+			# message("stuff", location=P.screen_c, registration=5, blit_txt=True)
+
+			# if you want to indicate block progress
+			# "You are on block {0} of {1}".format(P.block_number, P.blocks_per_experiment)
+
+			# flip()
+
+			# any_key()
+			pass
 
 		# fill()
 		# message("Hey", location=P.screen_c, registration=5, blit_txt=True)
@@ -141,7 +171,7 @@ class EndoExoColourDiscrim(klibs.Experiment):
 
 
 	def trial_prep(self):
-		if P.trial_number == P.trials_per_block / 2:
+		if P.trial_number == P.trials_per_block / 2 and not P.practicing:
 			fill()
 			message("Good job!\nTake a break!\nPress any key to continue...", location=P.screen_c, registration=5, blit_txt=True)
 			flip()

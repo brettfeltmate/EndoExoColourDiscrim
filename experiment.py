@@ -73,7 +73,7 @@ class EndoExoColourDiscrim(klibs.Experiment):
         self.txtm.add_style(CUE, font_size=self.sizes[CUE])
 
         self.stims = {
-            LONG: message('-------', style=CUE, location=P.screen_c, registration=5, blit_txt=False),
+            LONG: message('----------------', style=CUE, location=P.screen_c, registration=5, blit_txt=False),
             SHORT: message('----', style=CUE, location=P.screen_c, registration=5, blit_txt=False),
             TARGET: kld.Rectangle(width=self.sizes[TARGET]),
             WHEEL: kld.ColorWheel(diameter=self.sizes[WHEEL][0], thickness=self.sizes[WHEEL][1], auto_draw=False),
@@ -94,8 +94,10 @@ class EndoExoColourDiscrim(klibs.Experiment):
         # anything you want them to see first
         if P.practicing:
             fill()
-            message("Welcome to the task. \n Press any key to begin the experiment.", location=P.screen_c,
-                    registration=5, blit_txt=True)
+            message(
+                "Welcome to the task. \n Use the auditory warning signals to prepare for whichever time interval is indicated. \n Respond as quickly as possible, and pick the target colour to the best of your ability. \n Press any key to begin the experiment.",
+                location=P.screen_c,
+                registration=5, blit_txt=True)
             flip()
 
             any_key()
@@ -113,7 +115,8 @@ class EndoExoColourDiscrim(klibs.Experiment):
         # anything for remaining blcoks
         else:
             fill()
-            message("Take a break! You have finished a block of trials", location=P.screen_c, registration=5,
+            message("Take a break! You have finished a block of trials. \n To continue, click the mouse button.",
+                    location=P.screen_c, registration=5,
                     blit_txt=True)
             flip()
 
@@ -314,9 +317,11 @@ class EndoExoColourDiscrim(klibs.Experiment):
         # Initialize pen to draw cell outlines
         transparent_pen = aggdraw.Pen((0, 0, 0), cell_outline_width)
 
+        count = int(math.sqrt(cells))
+
         # Generate cells, arranged in 4x4 array
-        for row in range(cell_size):
-            for col in range(cell_size):
+        for row in range(count):
+            for col in range(count):
                 # Randomly select colour for each cell
                 cell_colour = const_lum[random.randrange(0, 360)]
                 # Brush to apply colour
